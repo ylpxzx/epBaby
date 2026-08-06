@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; style-src-attr 'unsafe-inline'; script-src 'self';"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>小伴像素宠物编辑器</title>
+  </head>
+  <body>
+    <div class="editor-app">
+      <header class="editor-topbar">
+        <div class="editor-brand">
+          <span class="brand-pixel" aria-hidden="true"></span>
+          <div><strong>小伴编辑器</strong><small id="canvas-summary">32 × 32</small></div>
+        </div>
+        <input id="project-name" class="project-name" value="我的像素宠物" aria-label="项目名称" />
+        <div class="topbar-actions">
+          <select id="project-picker" aria-label="已保存项目"><option value="">本地项目</option></select>
+          <button id="load-project" class="button subtle" type="button">载入</button>
+          <button id="new-project" class="button subtle" type="button">新建</button>
+          <button id="resize-canvas" class="button subtle" type="button">调整画布</button>
+          <span class="topbar-separator" aria-hidden="true"></span>
+          <button id="undo" class="icon-text-button" type="button" title="撤销 Ctrl+Z">↶ <span>撤销</span></button>
+          <button id="redo" class="icon-text-button" type="button" title="恢复 Ctrl+Y">↷ <span>恢复</span></button>
+          <button id="export-project" class="button subtle" type="button">导出宠物包</button>
+          <button id="save-project" class="button primary" type="button">保存项目</button>
+        </div>
+      </header>
+
+      <main class="editor-workspace">
+        <aside class="tool-rail" aria-label="绘图工具">
+          <button class="tool-button active" data-tool="pencil" type="button" title="画笔 B"><span>✎</span><small>画笔</small></button>
+          <button class="tool-button" data-tool="eraser" type="button" title="橡皮 E"><span>◇</span><small>橡皮</small></button>
+          <button class="tool-button" data-tool="fill" type="button" title="填充 G"><span>▰</span><small>填充</small></button>
+          <button class="tool-button" data-tool="eyedropper" type="button" title="吸色 I"><span>⌁</span><small>吸色</small></button>
+          <span class="tool-divider"></span>
+          <label class="onion-toggle" title="洋葱皮">
+            <input id="onion-skin" type="checkbox" checked />
+            <span>◉</span><small>洋葱皮</small>
+          </label>
+        </aside>
+
+        <section class="canvas-panel">
+          <div class="canvas-toolbar">
+            <div><strong id="active-action-label">待机</strong><span id="active-frame-label">帧 1</span></div>
+            <label>缩放 <input id="zoom" type="range" min="6" max="24" step="1" value="16" /><output id="zoom-value">16×</output></label>
+          </div>
+          <div id="canvas-viewport" class="canvas-viewport">
+            <canvas id="editor-canvas" width="512" height="512" aria-label="像素绘图画布"></canvas>
+          </div>
+          <div class="statusbar">
+            <span id="pointer-position">X 0  Y 0</span>
+            <span id="save-status">未保存</span>
+          </div>
+        </section>
+
+        <aside class="inspector">
+          <section class="inspector-section preview-section">
+            <div class="section-heading"><h2>动画预览</h2><button id="preview-toggle" type="button">播放</button></div>
+            <div class="preview-stage"><canvas id="preview-canvas" width="192" height="192"></canvas></div>
+          </section>
+
+          <section class="inspector-section">
+            <div class="section-heading"><h2>动作</h2><button id="add-action" type="button">＋</button></div>
+            <select id="action-picker" class="wide-select" aria-label="当前动作"></select>
+            <input id="action-name" class="text-setting" aria-label="动作名称" placeholder="动作名称" />
+            <label class="inline-setting"><span>循环播放</span><input id="action-loop" type="checkbox" checked /></label>
+          </section>
+
+          <section class="inspector-section layers-section">
+            <div class="section-heading"><h2>拼豆图层</h2><button id="add-layer" type="button">＋</button></div>
+            <div id="layer-list" class="layer-list"></div>
+            <input id="layer-name" class="text-setting" aria-label="图层名称" placeholder="图层名称" />
+          </section>
+
+          <section class="inspector-section palette-section">
+            <div class="section-heading"><h2>调色板</h2><input id="custom-color" type="color" value="#b8ee49" aria-label="自定义颜色" /></div>
+            <div id="palette" class="palette"></div>
+          </section>
+        </aside>
+
+        <section class="timeline">
+          <div class="timeline-heading">
+            <div><strong>逐帧动画</strong><span id="timeline-meta">1 帧</span></div>
+            <div class="timeline-actions">
+              <label>帧时长 <input id="frame-duration" type="number" min="20" max="5000" step="10" value="180" /> ms</label>
+              <button id="duplicate-frame" class="button subtle" type="button">复制帧</button>
+              <button id="delete-frame" class="button subtle danger" type="button">删除帧</button>
+              <button id="add-frame" class="button primary compact" type="button">＋ 新建帧</button>
+            </div>
+          </div>
+          <div id="frame-list" class="frame-list"></div>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="new-project-dialog" class="editor-dialog">
+      <form id="new-project-form" class="dialog-form">
+        <header class="dialog-header">
+          <div><span class="dialog-eyebrow">NEW PIXEL PET</span><h2>新建像素宠物</h2></div>
+          <button class="dialog-close" data-close-dialog type="button" aria-label="关闭">×</button>
+        </header>
+        <div class="dialog-content">
+          <label class="dialog-field full"><span>宠物名称</span><input id="new-project-name" type="text" maxlength="40" value="我的像素宠物" required /></label>
+
+          <section class="dialog-group full">
+            <div class="dialog-label"><span>画布尺寸</span><small>最大 128 × 128</small></div>
+            <div class="size-presets" role="group" aria-label="尺寸预设">
+              <button data-canvas-size="16" type="button">16</button>
+              <button data-canvas-size="24" type="button">24</button>
+              <button data-canvas-size="32" class="active" type="button">32</button>
+              <button data-canvas-size="48" type="button">48</button>
+              <button data-canvas-size="64" type="button">64</button>
+            </div>
+            <div class="dimension-row">
+              <label><span>宽度</span><input id="new-canvas-width" type="number" min="1" max="128" value="32" required /></label>
+              <span aria-hidden="true">×</span>
+              <label><span>高度</span><input id="new-canvas-height" type="number" min="1" max="128" value="32" required /></label>
+              <label class="square-lock"><input id="new-canvas-square" type="checkbox" checked /><span>保持正方形</span></label>
+            </div>
+          </section>
+
+          <label class="dialog-field"><span>初始动作</span><input id="new-action-name" type="text" maxlength="30" value="待机" required /></label>
+          <label class="dialog-field"><span>初始调色板</span><select id="new-palette"><option value="classic">经典像素色</option><option value="pastel">柔和自然色</option><option value="mono">单色草图</option></select></label>
+
+          <fieldset class="dialog-group full layer-presets">
+            <legend>创建默认图层</legend>
+            <label><input name="default-layer" type="checkbox" value="阴影" checked /><span>阴影</span></label>
+            <label><input name="default-layer" type="checkbox" value="主体" checked /><span>主体</span></label>
+            <label><input name="default-layer" type="checkbox" value="表情" checked /><span>表情</span></label>
+            <label><input name="default-layer" type="checkbox" value="特效" checked /><span>特效</span></label>
+          </fieldset>
+        </div>
+        <footer class="dialog-footer"><button class="button subtle" data-close-dialog type="button">取消</button><button class="button primary" type="submit">创建宠物</button></footer>
+      </form>
+    </dialog>
+
+    <dialog id="resize-canvas-dialog" class="editor-dialog compact-dialog">
+      <form id="resize-canvas-form" class="dialog-form">
+        <header class="dialog-header">
+          <div><span class="dialog-eyebrow">CANVAS SIZE</span><h2>调整画布</h2></div>
+          <button class="dialog-close" data-close-dialog type="button" aria-label="关闭">×</button>
+        </header>
+        <div class="dialog-content resize-content">
+          <div class="dimension-row full">
+            <label><span>宽度</span><input id="resize-canvas-width" type="number" min="1" max="128" required /></label>
+            <span aria-hidden="true">×</span>
+            <label><span>高度</span><input id="resize-canvas-height" type="number" min="1" max="128" required /></label>
+            <label class="square-lock"><input id="resize-canvas-square" type="checkbox" /><span>保持正方形</span></label>
+          </div>
+          <section class="anchor-section full">
+            <div class="dialog-label"><span>原内容对齐位置</span><small id="resize-summary"></small></div>
+            <div id="canvas-anchor" class="anchor-grid" role="radiogroup" aria-label="原内容对齐位置">
+              <button data-anchor="top-left" type="button" aria-label="左上"></button><button data-anchor="top" type="button" aria-label="上方"></button><button data-anchor="top-right" type="button" aria-label="右上"></button>
+              <button data-anchor="left" type="button" aria-label="左侧"></button><button data-anchor="center" class="active" type="button" aria-label="居中"></button><button data-anchor="right" type="button" aria-label="右侧"></button>
+              <button data-anchor="bottom-left" type="button" aria-label="左下"></button><button data-anchor="bottom" type="button" aria-label="下方"></button><button data-anchor="bottom-right" type="button" aria-label="右下"></button>
+            </div>
+          </section>
+          <p id="resize-warning" class="resize-warning full">缩小画布会裁掉边界之外的像素。该操作可以撤销。</p>
+        </div>
+        <footer class="dialog-footer"><button class="button subtle" data-close-dialog type="button">取消</button><button class="button primary" type="submit">应用尺寸</button></footer>
+      </form>
+    </dialog>
+    <script type="module" src="./editor/editor.ts"></script>
+  </body>
+</html>

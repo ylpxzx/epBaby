@@ -1,0 +1,28 @@
+{
+  "name": "ep-baby",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Electron desktop pixel pet prototype",
+  "main": "dist/electron/main.cjs",
+  "scripts": {
+    "electron:install": "cross-env ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/ install-electron --no",
+    "sprites:slice": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/slice-sprites.ps1",
+    "pet:generate-default": "node scripts/generate-default-slime.mjs && node scripts/generate-role-cat.mjs",
+    "build:main": "tsup",
+    "typecheck": "tsc --noEmit",
+    "build": "npm run typecheck && npm run build:main && vite build",
+    "dev": "npm run electron:install && npm run build:main && concurrently -k \"vite --host 127.0.0.1\" \"wait-on tcp:5173 && cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:5173 electron .\"",
+    "start": "npm run electron:install && npm run build && electron ."
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "concurrently": "latest",
+    "cross-env": "latest",
+    "electron": "latest",
+    "tsup": "latest",
+    "typescript": "latest",
+    "vite": "latest",
+    "wait-on": "latest"
+  }
+}

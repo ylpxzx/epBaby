@@ -1,0 +1,4 @@
+interface:
+  display_name: "导入像素宠物"
+  short_description: "从角色设定图提取姿势并生成可编辑的多动作像素宠物项目"
+  default_prompt: "使用 $import-pixel-pet 根据角色设定图生成并接入一个新的可编辑像素宠物。"

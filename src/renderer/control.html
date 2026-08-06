@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; style-src-attr 'unsafe-inline'; script-src 'self';"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>小伴控制台</title>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar" data-window-drag>
+        <strong class="brand" data-i18n="brand">小伴</strong>
+        <p class="page-title" data-i18n="pageTitle">我的桌面伙伴</p>
+
+        <div class="topbar-tools" data-window-no-drag>
+          <button id="editor-button" class="editor-entry" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 16 8-8 4 4-8 8H4v-4ZM14 6l2-2 4 4-2 2"></path></svg>
+            <span data-i18n="designPet">设计宠物</span>
+          </button>
+          <button id="theme-button" class="icon-button" type="button" data-i18n-aria="toggleTheme" aria-label="切换主题">
+            <svg class="sun-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="4"></circle>
+              <path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42"></path>
+            </svg>
+          </button>
+          <span class="toolbar-divider" aria-hidden="true"></span>
+          <button id="locale-button" class="locale-button" type="button" data-i18n-aria="toggleLanguage" aria-label="切换语言">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="9"></circle>
+              <path d="M3 12h18M12 3c2.3 2.45 3.5 5.45 3.5 9S14.3 18.55 12 21M12 3C9.7 5.45 8.5 8.45 8.5 12s1.2 6.55 3.5 9"></path>
+            </svg>
+            <span id="locale-label">简体中文</span>
+            <svg class="chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"></path></svg>
+          </button>
+          <span class="toolbar-divider" aria-hidden="true"></span>
+          <div class="window-controls" role="group" data-i18n-aria="windowControls" aria-label="窗口控制">
+            <button id="window-minimize" class="window-button" type="button" data-i18n-aria="minimize" aria-label="最小化">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10"></path></svg>
+            </button>
+            <button id="window-maximize" class="window-button" type="button" data-i18n-aria="maximize" aria-label="最大化">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3.5" y="3.5" width="9" height="9" rx="1"></rect></svg>
+            </button>
+            <button id="window-close" class="window-button close" type="button" data-i18n-aria="close" aria-label="关闭">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8"></path></svg>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main class="console-main">
+        <section class="stage" aria-labelledby="pet-name">
+          <div class="stage-light" aria-hidden="true"></div>
+          <div class="pet-stage-visual">
+            <canvas id="stage-canvas" width="720" height="520" aria-hidden="true"></canvas>
+            <div class="stage-shadow" aria-hidden="true"></div>
+            <div id="empty-state" class="empty-state" hidden>
+              <span class="empty-pixel" aria-hidden="true"></span>
+              <h1 data-i18n="emptyTitle">还没有桌面宠物</h1>
+              <p data-i18n="emptyDescription">从一张空白像素画布开始，设计你的第一个伙伴。</p>
+              <button id="empty-create" type="button" data-i18n="createPet">创建像素宠物</button>
+            </div>
+            <h1 id="pet-name" class="visually-hidden" data-i18n="loading">载入中</h1>
+            <p id="pet-kind" class="visually-hidden"></p>
+            <p id="pet-description" class="visually-hidden"></p>
+          </div>
+
+          <section class="control-card" aria-labelledby="action-card-title">
+            <div class="current-row">
+              <span id="action-card-title" data-i18n="currentAction">当前动作</span>
+              <strong id="current-action">待机</strong>
+            </div>
+
+            <div id="action-list" class="action-list" role="group" data-i18n-aria="actionControl" aria-label="动作控制"></div>
+
+            <div class="range-row">
+              <label for="speed" data-i18n="speed">速度</label>
+              <input id="speed" type="range" min="0.5" max="2" step="0.1" value="1" />
+              <output id="speed-value" for="speed">1.0×</output>
+            </div>
+            <div class="range-row">
+              <label for="scale" data-i18n="size">大小</label>
+              <input id="scale" type="range" min="0.7" max="1.35" step="0.05" value="1" />
+              <output id="scale-value" for="scale">100%</output>
+            </div>
+
+            <div class="control-card-footer">
+              <button id="pause-button" class="pause-button" type="button" data-i18n-aria="pauseActivity" aria-label="暂停活动">
+                <svg class="pause-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14"></path></svg>
+                <svg class="play-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7Z"></path></svg>
+              </button>
+              <button id="recall-button" class="recall-button" type="button" data-i18n="recall">召回桌面</button>
+            </div>
+          </section>
+        </section>
+
+        <footer class="pet-dock">
+          <div id="pet-list" class="pet-list" aria-label="宠物列表"></div>
+          <div class="dock-divider" aria-hidden="true"></div>
+          <label class="auto-toggle" for="auto-mode">
+            <span data-i18n="autoCompanion">自动陪伴</span>
+            <input id="auto-mode" type="checkbox" />
+            <span class="switch" aria-hidden="true"></span>
+          </label>
+        </footer>
+      </main>
+    </div>
+    <script type="module" src="./control.ts"></script>
+  </body>
+</html>
