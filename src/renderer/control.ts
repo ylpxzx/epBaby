@@ -20,7 +20,11 @@ const COPY = {
     windowControls: "窗口控制", minimize: "最小化", maximize: "最大化", close: "关闭",
     localeLabel: "简体中文", title: "小伴控制台", emptyTitle: "还没有桌面宠物",
     emptyDescription: "从一张空白像素画布开始，设计你的第一个伙伴。", createPet: "创建像素宠物",
-    emptyLibrary: "宠物库为空", customPet: "自定义像素宠物", noAction: "暂无动作"
+    emptyLibrary: "宠物库为空", customPet: "自定义像素宠物", noAction: "暂无动作",
+    chooseCover: "选择首页展示帧", deletePet: "删除宠物", coverEyebrow: "首页展示图",
+    coverTitle: "选择封面帧", coverAction: "动作", coverFrames: "可选封面帧",
+    cancel: "取消", saveCover: "设为首页展示图", deleteEyebrow: "删除宠物",
+    deleteTitle: "确定删除这个宠物？", deleteConfirm: "永久删除"
   },
   en: {
     brand: "Buddy", pageTitle: "My desktop companions", loading: "Loading", currentAction: "Current action",
@@ -30,7 +34,11 @@ const COPY = {
     windowControls: "Window controls", minimize: "Minimize", maximize: "Maximize", close: "Close",
     localeLabel: "English", title: "Buddy Console", emptyTitle: "No desktop pets yet",
     emptyDescription: "Start with a blank pixel canvas and design your first companion.", createPet: "Create pixel pet",
-    emptyLibrary: "Pet library is empty", customPet: "Custom pixel pet", noAction: "No actions"
+    emptyLibrary: "Pet library is empty", customPet: "Custom pixel pet", noAction: "No actions",
+    chooseCover: "Choose home preview frame", deletePet: "Delete pet", coverEyebrow: "Home preview",
+    coverTitle: "Choose a cover frame", coverAction: "Action", coverFrames: "Available cover frames",
+    cancel: "Cancel", saveCover: "Use as home preview", deleteEyebrow: "Delete pet",
+    deleteTitle: "Delete this pet?", deleteConfirm: "Delete permanently"
   }
 } as const;
 
@@ -68,6 +76,14 @@ const themeButton = required<HTMLButtonElement>("#theme-button");
 const editorButton = required<HTMLButtonElement>("#editor-button");
 const stageCanvas = required<HTMLCanvasElement>("#stage-canvas");
 const stageContext = getContext2d(stageCanvas);
+const coverDialog = required<HTMLDialogElement>("#cover-dialog");
+const coverPetName = required<HTMLParagraphElement>("#cover-pet-name");
+const coverActionSelect = required<HTMLSelectElement>("#cover-action");
+const coverFrameList = required<HTMLDivElement>("#cover-frame-list");
+const coverSaveButton = required<HTMLButtonElement>("#cover-save");
+const deleteDialog = required<HTMLDialogElement>("#delete-dialog");
+const deleteMessage = required<HTMLParagraphElement>("#delete-message");
+const deleteConfirmButton = required<HTMLButtonElement>("#delete-confirm");
 
 const savedLocale = window.localStorage.getItem("ep-baby.locale");
 let locale: Locale = savedLocale === "zh-CN" || savedLocale === "en"
@@ -85,6 +101,9 @@ let stageProject: EditorProject | undefined;
 let projectRequest = 0;
 let actionStartedAt = performance.now();
 let lastActionKey = "";
+let coverProjectId = "";
+let selectedCoverFrameId = "";
+let deleteProjectId = "";
 
 function t(key: CopyKey): string {
   return COPY[locale][key];
@@ -114,11 +133,14 @@ function buildPetCards(): void {
   for (const summary of projectSummaries) {
     const project = projects.get(summary.id);
     if (!project) continue;
-    const button = document.createElement("button");
-    button.className = "pet-card";
-    button.type = "button";
-    button.dataset.petId = project.id;
-    button.setAttribute("aria-label", project.name);
+    const card = document.createElement("div");
+    card.className = "pet-card";
+    card.dataset.petId = project.id;
+    const selectButton = document.createElement("button");
+    selectButton.className = "pet-card-select";
+    selectButton.type = "button";
+    selectButton.setAttribute("aria-label", project.name);
+    selectButton.setAttribute("aria-pressed", String(project.id === state?.selectedPetId));
     const previewHolder = document.createElement("span");
     previewHolder.className = "pet-preview";
     previewHolder.setAttribute("aria-hidden", "true");
@@ -128,11 +150,133 @@ function buildPetCards(): void {
     const label = document.createElement("strong");
     label.textContent = project.name;
     previewHolder.append(preview);
-    button.append(previewHolder, label);
+    selectButton.append(previewHolder, label);
     const previewContext = preview.getContext("2d");
     if (previewContext) drawProjectThumbnail(previewContext, project);
-    button.addEventListener("click", () => void window.desktopPet.selectPet(project.id).then(applyState));
-    petList.append(button);
+    selectButton.addEventListener("click", () => void window.desktopPet.selectPet(project.id).then(applyState));
+
+    const tools = document.createElement("div");
+    tools.className = "pet-card-tools";
+    const coverButton = document.createElement("button");
+    coverButton.className = "pet-card-tool";
+    coverButton.type = "button";
+    coverButton.title = t("chooseCover");
+    coverButton.setAttribute("aria-label", `${t("chooseCover")}：${project.name}`);
+    coverButton.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="13" rx="2"></rect><circle cx="7" cy="8" r="1.5"></circle><path d="m4.5 14 3.8-3.5 2.5 2 2.4-2.2 2.3 3.7"></path></svg>';
+    coverButton.addEventListener("click", () => openCoverDialog(project));
+    const deleteButton = document.createElement("button");
+    deleteButton.className = "pet-card-tool danger";
+    deleteButton.type = "button";
+    deleteButton.title = t("deletePet");
+    deleteButton.setAttribute("aria-label", `${t("deletePet")}：${project.name}`);
+    deleteButton.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 6h12M8 3.5h4M6 6l.7 10h6.6L14 6M8.5 9v4M11.5 9v4"></path></svg>';
+    deleteButton.addEventListener("click", () => openDeleteDialog(project));
+    tools.append(coverButton, deleteButton);
+
+    card.classList.toggle("selected", project.id === state?.selectedPetId);
+    card.append(selectButton, tools);
+    petList.append(card);
+  }
+}
+
+function renderCoverFrames(): void {
+  const project = projects.get(coverProjectId);
+  const action = project?.actions.find((candidate) => candidate.id === coverActionSelect.value);
+  coverFrameList.replaceChildren();
+  if (!project || !action) return;
+  if (!action.frames.some((frame) => frame.id === selectedCoverFrameId)) {
+    selectedCoverFrameId = action.frames[0]?.id ?? "";
+  }
+  action.frames.forEach((frame, index) => {
+    const button = document.createElement("button");
+    button.className = "cover-frame-option";
+    button.type = "button";
+    button.setAttribute("role", "option");
+    const selected = frame.id === selectedCoverFrameId;
+    button.classList.toggle("selected", selected);
+    button.setAttribute("aria-selected", String(selected));
+    const canvas = document.createElement("canvas");
+    canvas.width = 150;
+    canvas.height = 108;
+    const context = canvas.getContext("2d");
+    if (context) {
+      drawProjectFrame(context, project, frame, { maxSize: 96, bottomPadding: 6 });
+    }
+    const label = document.createElement("span");
+    label.textContent = frame.name || `${locale === "zh-CN" ? "帧" : "Frame"} ${index + 1}`;
+    button.append(canvas, label);
+    button.addEventListener("click", () => {
+      selectedCoverFrameId = frame.id;
+      renderCoverFrames();
+    });
+    coverFrameList.append(button);
+  });
+}
+
+function openCoverDialog(project: EditorProject): void {
+  coverProjectId = project.id;
+  coverPetName.textContent = project.name;
+  coverActionSelect.replaceChildren();
+  for (const action of project.actions) {
+    const option = document.createElement("option");
+    option.value = action.id;
+    option.textContent = action.name;
+    coverActionSelect.append(option);
+  }
+  const coverAction = project.actions.find((action) => action.id === project.cover.actionId)
+    ?? project.actions[0];
+  coverActionSelect.value = coverAction?.id ?? "";
+  selectedCoverFrameId = coverAction?.frames.some((frame) => frame.id === project.cover.frameId)
+    ? project.cover.frameId
+    : coverAction?.frames[0]?.id ?? "";
+  renderCoverFrames();
+  coverDialog.showModal();
+}
+
+function openDeleteDialog(project: EditorProject): void {
+  deleteProjectId = project.id;
+  deleteMessage.textContent = locale === "zh-CN"
+    ? `“${project.name}”及其全部动作将从本机永久删除，重启应用后也不会恢复。此操作无法撤销。`
+    : `“${project.name}” and all of its actions will be permanently removed from this device and will not return after restart. This cannot be undone.`;
+  deleteDialog.showModal();
+}
+
+async function saveSelectedCover(): Promise<void> {
+  const project = projects.get(coverProjectId);
+  const action = project?.actions.find((candidate) => candidate.id === coverActionSelect.value);
+  const frame = action?.frames.find((candidate) => candidate.id === selectedCoverFrameId);
+  if (!project || !action || !frame) return;
+  coverSaveButton.disabled = true;
+  try {
+    const summary = await window.desktopPet.setEditorProjectCover(project.id, action.id, frame.id);
+    if (!summary) return;
+    project.cover = { actionId: action.id, frameId: frame.id };
+    const previous = projectSummaries.find((candidate) => candidate.id === summary.id);
+    projectSummaries = [
+      summary,
+      ...projectSummaries.filter((candidate) => candidate !== previous && candidate.id !== summary.id)
+    ];
+    buildPetCards();
+    if (state) applyState(state);
+    coverDialog.close();
+  } finally {
+    coverSaveButton.disabled = false;
+  }
+}
+
+async function deleteSelectedProject(): Promise<void> {
+  const project = projects.get(deleteProjectId);
+  if (!project) return;
+  deleteConfirmButton.disabled = true;
+  try {
+    const nextState = await window.desktopPet.deleteEditorProject(project.id);
+    projects.delete(project.id);
+    projectSummaries = projectSummaries.filter((summary) => summary.id !== project.id);
+    deleteDialog.close();
+    await refreshProjects();
+    applyState(nextState);
+  } finally {
+    deleteConfirmButton.disabled = false;
   }
 }
 
@@ -200,10 +344,11 @@ function applyState(nextState: RuntimeState): void {
   setControlsDisabled(isEmpty);
   buildActionButtons(project, nextState);
 
-  for (const card of petList.querySelectorAll<HTMLButtonElement>(".pet-card")) {
+  for (const card of petList.querySelectorAll<HTMLDivElement>(".pet-card")) {
     const selected = card.dataset.petId === nextState.selectedPetId;
     card.classList.toggle("selected", selected);
-    card.setAttribute("aria-pressed", String(selected));
+    card.querySelector<HTMLButtonElement>(".pet-card-select")
+      ?.setAttribute("aria-pressed", String(selected));
   }
   if (previousPetId !== nextState.selectedPetId || stageProject?.id !== project?.id) {
     void updateStageProject(project?.id ?? "");
@@ -278,6 +423,18 @@ scaleInput.addEventListener("change", () => void window.desktopPet.setScale(Numb
 localeButton.addEventListener("click", () => setLocale(locale === "zh-CN" ? "en" : "zh-CN"));
 themeButton.addEventListener("click", () => applyTheme(theme === "light" ? "dark" : "light"));
 editorButton.addEventListener("click", () => window.desktopPet.showEditor(state?.selectedPetId || undefined));
+coverActionSelect.addEventListener("change", () => {
+  const project = projects.get(coverProjectId);
+  const action = project?.actions.find((candidate) => candidate.id === coverActionSelect.value);
+  selectedCoverFrameId = action?.frames[0]?.id ?? "";
+  renderCoverFrames();
+});
+coverSaveButton.addEventListener("click", () => void saveSelectedCover());
+required<HTMLButtonElement>("#cover-cancel").addEventListener("click", () => coverDialog.close());
+required<HTMLButtonElement>("#cover-close").addEventListener("click", () => coverDialog.close());
+deleteConfirmButton.addEventListener("click", () => void deleteSelectedProject());
+required<HTMLButtonElement>("#delete-cancel").addEventListener("click", () => deleteDialog.close());
+required<HTMLButtonElement>("#delete-close").addEventListener("click", () => deleteDialog.close());
 required<HTMLButtonElement>("#empty-create").addEventListener("click", () => window.desktopPet.showEditor());
 required<HTMLButtonElement>("#window-minimize").addEventListener("click", () => window.desktopPet.minimizeControl());
 required<HTMLButtonElement>("#window-maximize").addEventListener("click", () => window.desktopPet.toggleMaximizeControl());
@@ -293,20 +450,7 @@ document.addEventListener("keydown", (event) => {
 });
 
 window.desktopPet.onStateChanged(applyState);
-window.desktopPet.onEditorProjectChanged((projectId) => {
-  void window.desktopPet.loadEditorProject(projectId).then((project) => {
-    if (!project) return;
-    projects.set(project.id, project);
-    const existing = projectSummaries.find((summary) => summary.id === project.id);
-    const summary = {
-      id: project.id, name: project.name, updatedAt: project.updatedAt,
-      width: project.canvas.width, height: project.canvas.height, actionCount: project.actions.length
-    };
-    projectSummaries = [summary, ...projectSummaries.filter((candidate) => candidate !== existing && candidate.id !== project.id)];
-    buildPetCards();
-    if (state) applyState(state);
-  });
-});
+window.desktopPet.onEditorProjectChanged(() => void refreshProjects());
 
 async function initialize(): Promise<void> {
   applyTheme(theme);

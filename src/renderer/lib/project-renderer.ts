@@ -16,6 +16,7 @@ interface DrawableProject {
   palette: string[];
   layers: Array<{ id: string; visible: boolean; opacity: number }>;
   actions: DrawableAction[];
+  cover?: { actionId: string; frameId: string };
 }
 
 export interface DrawProjectOptions {
@@ -105,8 +106,11 @@ export function drawProjectThumbnail(
   context: CanvasRenderingContext2D,
   project: DrawableProject
 ): void {
-  const action = project.actions[0];
-  drawProjectFrame(context, project, action?.frames[0], {
+  const action = project.actions.find((candidate) => candidate.id === project.cover?.actionId)
+    ?? project.actions[0];
+  const frame = action?.frames.find((candidate) => candidate.id === project.cover?.frameId)
+    ?? action?.frames[0];
+  drawProjectFrame(context, project, frame, {
     maxSize: Math.min(context.canvas.width, context.canvas.height) - 8,
     bottomPadding: Math.max(4, Math.round((context.canvas.height - Math.min(context.canvas.width, context.canvas.height)) / 2))
   });

@@ -58,6 +58,14 @@ export class EditorProjectStore {
     const safeMigrationId = migrationId.replace(/[^a-zA-Z0-9_-]/g, "");
     if (!safeMigrationId) throw new Error("Invalid project replacement migration id");
     const marker = path.join(this.directory, `.${safeMigrationId}`);
+    if (expectedProjectId) {
+      try {
+        await fs.access(this.deletedMarkerPath(expectedProjectId));
+        return undefined;
+      } catch {
+        // No user deletion marker: bundled migrations may seed or replace it.
+      }
+    }
     try {
       await fs.access(marker);
       if (expectedProjectId) {
@@ -139,12 +147,25 @@ export class EditorProjectStore {
     const temporary = `${target}.tmp`;
     await fs.writeFile(temporary, JSON.stringify(project, null, 2), "utf8");
     await fs.rename(temporary, target);
+    await fs.rm(this.deletedMarkerPath(project.id), { force: true });
     return project;
+  }
+
+  async remove(projectId: string): Promise<void> {
+    await fs.mkdir(this.directory, { recursive: true });
+    await fs.rm(this.projectPath(projectId), { force: true });
+    await fs.writeFile(this.deletedMarkerPath(projectId), new Date().toISOString(), "utf8");
   }
 
   private projectPath(projectId: string): string {
     const safeId = projectId.replace(/[^a-zA-Z0-9_-]/g, "");
     if (!safeId) throw new Error("Invalid editor project id");
     return path.join(this.directory, `${safeId}.json`);
+  }
+
+  private deletedMarkerPath(projectId: string): string {
+    const safeId = projectId.replace(/[^a-zA-Z0-9_-]/g, "");
+    if (!safeId) throw new Error("Invalid editor project id");
+    return path.join(this.directory, `.${safeId}.deleted`);
   }
 }

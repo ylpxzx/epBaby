@@ -613,19 +613,27 @@ output {
 }
 
 .pet-card {
+  position: relative;
   min-width: 0;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: var(--surface-soft);
+  transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
+}
+
+.pet-card-select {
+  width: 100%;
   height: 100%;
   display: grid;
   grid-template-rows: minmax(0, 1fr) 28px;
   align-items: center;
   padding: 9px 10px 5px;
-  overflow: hidden;
-  border: 1px solid transparent;
-  border-radius: 10px;
+  border: 0;
   color: var(--text);
-  background: var(--surface-soft);
+  background: transparent;
   cursor: pointer;
-  transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
 }
 
 .pet-card:hover {
@@ -637,6 +645,60 @@ output {
   border-color: var(--accent);
   background: var(--surface-strong);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.pet-card-tools {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 5px;
+  opacity: 0;
+  transform: translateY(-3px);
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+
+.pet-card:hover .pet-card-tools,
+.pet-card:focus-within .pet-card-tools,
+.pet-card.selected .pet-card-tools {
+  opacity: 1;
+  transform: none;
+}
+
+.pet-card-tool {
+  width: 29px;
+  height: 29px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--surface-strong) 94%, transparent);
+  box-shadow: 0 2px 8px rgb(27 33 40 / 12%);
+  cursor: pointer;
+}
+
+.pet-card-tool:hover {
+  border-color: var(--accent);
+  color: var(--text);
+  background: var(--accent-soft);
+}
+
+.pet-card-tool.danger:hover {
+  border-color: #cf5b50;
+  color: #b9362b;
+  background: color-mix(in srgb, #cf5b50 12%, var(--surface-strong));
+}
+
+.pet-card-tool svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
 }
 
 .pet-preview {
@@ -661,6 +723,219 @@ output {
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.pet-dialog {
+  width: min(780px, calc(100vw - 48px));
+  max-height: min(700px, calc(100vh - 48px));
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  color: var(--text);
+  background: transparent;
+  box-shadow: 0 26px 72px rgb(15 20 27 / 28%);
+}
+
+.pet-dialog::backdrop {
+  background: rgb(19 24 30 / 48%);
+  backdrop-filter: blur(3px);
+}
+
+.pet-dialog-panel {
+  max-height: min(700px, calc(100vh - 48px));
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  background: var(--surface-strong);
+}
+
+.pet-dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.pet-dialog-eyebrow,
+.pet-dialog-header h2,
+.pet-dialog-project,
+.delete-message {
+  margin: 0;
+}
+
+.pet-dialog-eyebrow {
+  margin-bottom: 5px;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.pet-dialog-eyebrow.danger {
+  color: #c4473b;
+}
+
+.pet-dialog-header h2 {
+  font-size: 22px;
+  font-weight: 680;
+  letter-spacing: -0.02em;
+}
+
+.dialog-close {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  flex: none;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  color: var(--text-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.dialog-close:hover {
+  color: var(--text);
+  background: var(--surface-soft);
+}
+
+.dialog-close svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 1.5;
+}
+
+.pet-dialog-project {
+  margin-top: 20px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.cover-action-field {
+  display: grid;
+  grid-template-columns: auto minmax(180px, 260px);
+  align-items: center;
+  justify-content: start;
+  gap: 14px;
+  margin-top: 18px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.cover-action-field select {
+  height: 38px;
+  padding: 0 34px 0 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  background: var(--surface-soft);
+}
+
+.cover-frame-list {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+  gap: 10px;
+  margin-top: 18px;
+  padding: 2px 3px 10px 2px;
+  overflow: auto;
+}
+
+.cover-frame-option {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: 108px 25px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--text);
+  background: var(--surface-soft);
+  cursor: pointer;
+}
+
+.cover-frame-option:hover {
+  border-color: color-mix(in srgb, var(--accent) 62%, var(--line));
+}
+
+.cover-frame-option.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+.cover-frame-option canvas {
+  width: 100%;
+  height: 108px;
+  image-rendering: pixelated;
+}
+
+.cover-frame-option span {
+  align-self: end;
+  overflow: hidden;
+  font-size: 12px;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pet-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.dialog-secondary,
+.dialog-primary,
+.dialog-danger {
+  min-width: 104px;
+  height: 40px;
+  padding: 0 17px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.dialog-secondary {
+  border: 1px solid var(--line);
+  color: var(--text);
+  background: var(--surface-soft);
+}
+
+.dialog-primary {
+  border: 1px solid var(--accent);
+  color: #17210d;
+  background: var(--accent-bright);
+}
+
+.dialog-danger {
+  border: 1px solid #b9362b;
+  color: #ffffff;
+  background: #c4473b;
+}
+
+.dialog-primary:disabled,
+.dialog-danger:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.delete-dialog {
+  width: min(500px, calc(100vw - 48px));
+}
+
+.delete-message {
+  margin-top: 22px;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.75;
 }
 
 .dock-divider {
@@ -721,7 +996,14 @@ output {
 .action-button:focus-visible,
 .pause-button:focus-visible,
 .recall-button:focus-visible,
-.pet-card:focus-visible,
+.pet-card-select:focus-visible,
+.pet-card-tool:focus-visible,
+.cover-frame-option:focus-visible,
+.cover-action-field select:focus-visible,
+.dialog-close:focus-visible,
+.dialog-secondary:focus-visible,
+.dialog-primary:focus-visible,
+.dialog-danger:focus-visible,
 .auto-toggle input:focus-visible + .switch,
 input[type="range"]:focus-visible {
   outline: 2px solid var(--accent);

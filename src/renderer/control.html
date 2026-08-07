@@ -106,6 +106,49 @@
           </label>
         </footer>
       </main>
+
+      <dialog id="cover-dialog" class="pet-dialog cover-dialog">
+        <div class="pet-dialog-panel">
+          <header class="pet-dialog-header">
+            <div>
+              <p class="pet-dialog-eyebrow" data-i18n="coverEyebrow">首页展示图</p>
+              <h2 data-i18n="coverTitle">选择封面帧</h2>
+            </div>
+            <button id="cover-close" class="dialog-close" type="button" data-i18n-aria="cancel" aria-label="取消">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8"></path></svg>
+            </button>
+          </header>
+          <p id="cover-pet-name" class="pet-dialog-project"></p>
+          <label class="cover-action-field" for="cover-action">
+            <span data-i18n="coverAction">动作</span>
+            <select id="cover-action"></select>
+          </label>
+          <div id="cover-frame-list" class="cover-frame-list" role="listbox" data-i18n-aria="coverFrames" aria-label="可选封面帧"></div>
+          <footer class="pet-dialog-footer">
+            <button id="cover-cancel" class="dialog-secondary" type="button" data-i18n="cancel">取消</button>
+            <button id="cover-save" class="dialog-primary" type="button" data-i18n="saveCover">设为首页展示图</button>
+          </footer>
+        </div>
+      </dialog>
+
+      <dialog id="delete-dialog" class="pet-dialog delete-dialog">
+        <div class="pet-dialog-panel">
+          <header class="pet-dialog-header">
+            <div>
+              <p class="pet-dialog-eyebrow danger" data-i18n="deleteEyebrow">删除宠物</p>
+              <h2 data-i18n="deleteTitle">确定删除这个宠物？</h2>
+            </div>
+            <button id="delete-close" class="dialog-close" type="button" data-i18n-aria="cancel" aria-label="取消">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8"></path></svg>
+            </button>
+          </header>
+          <p id="delete-message" class="delete-message"></p>
+          <footer class="pet-dialog-footer">
+            <button id="delete-cancel" class="dialog-secondary" type="button" data-i18n="cancel">取消</button>
+            <button id="delete-confirm" class="dialog-danger" type="button" data-i18n="deleteConfirm">永久删除</button>
+          </footer>
+        </div>
+      </dialog>
     </div>
     <script type="module" src="./control.ts"></script>
   </body>

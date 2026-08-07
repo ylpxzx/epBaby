@@ -647,6 +647,48 @@ function registerIpc(): void {
     broadcastProjectChanged(saved.id);
     return saved;
   });
+  ipcMain.handle(
+    "editor:set-cover",
+    async (event, projectId: unknown, actionId: unknown, frameId: unknown) => {
+      if (
+        !isTrusted(event) ||
+        typeof projectId !== "string" ||
+        typeof actionId !== "string" ||
+        typeof frameId !== "string"
+      ) return undefined;
+      const project = runtimeProjects.get(projectId);
+      const action = project?.actions.find((candidate) => candidate.id === actionId);
+      const frame = action?.frames.find((candidate) => candidate.id === frameId);
+      if (!project || !action || !frame) return undefined;
+      const saved = await editorStore.save({
+        ...project,
+        cover: { actionId: action.id, frameId: frame.id }
+      });
+      runtimeProjects.set(saved.id, saved);
+      runtimePetProjects.delete(saved.id);
+      broadcastProjectChanged(saved.id);
+      return projectSummary(saved);
+    }
+  );
+  ipcMain.handle("editor:delete", async (event, projectId: unknown) => {
+    if (!isTrusted(event) || typeof projectId !== "string") return snapshot();
+    const project = runtimeProjects.get(projectId);
+    if (!project) return snapshot();
+    await editorStore.remove(project.id);
+    runtimeProjects.delete(project.id);
+    runtimePetProjects.delete(project.id);
+    if (settings.selectedPetId === project.id) {
+      const nextProject = [...runtimeProjects.values()]
+        .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0];
+      settings.selectedPetId = nextProject?.id ?? "";
+      currentActionId = nextProject?.actions[0]?.id ?? "";
+      persist();
+      broadcast();
+      scheduleBehavior();
+    }
+    broadcastProjectChanged(project.id);
+    return snapshot();
+  });
   ipcMain.handle("editor:export", (event, bundle: unknown) => {
     if (event.sender !== editorWindow?.webContents) throw new Error("Untrusted editor export request");
     return exportEditorBundle(bundle as EditorExportBundle);

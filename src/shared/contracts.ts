@@ -63,6 +63,12 @@ export interface DesktopPetApi {
   loadPetProject(projectId: string): Promise<RuntimePetProject | undefined>;
   loadEditorProject(projectId: string): Promise<EditorProject | undefined>;
   saveEditorProject(project: EditorProject): Promise<EditorProject>;
+  setEditorProjectCover(
+    projectId: string,
+    actionId: string,
+    frameId: string
+  ): Promise<EditorProjectSummary | undefined>;
+  deleteEditorProject(projectId: string): Promise<RuntimeState>;
   exportEditorProject(bundle: EditorExportBundle): Promise<EditorExportResult>;
   minimizeControl(): void;
   toggleMaximizeControl(): void;

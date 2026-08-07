@@ -26,6 +26,10 @@ const api: DesktopPetApi = {
     ipcRenderer.invoke("editor:load", projectId) as Promise<EditorProject | undefined>,
   saveEditorProject: (project) =>
     ipcRenderer.invoke("editor:save", project) as Promise<EditorProject>,
+  setEditorProjectCover: (projectId, actionId, frameId) =>
+    ipcRenderer.invoke("editor:set-cover", projectId, actionId, frameId) as Promise<EditorProjectSummary | undefined>,
+  deleteEditorProject: (projectId) =>
+    ipcRenderer.invoke("editor:delete", projectId) as Promise<RuntimeState>,
   exportEditorProject: (bundle) =>
     ipcRenderer.invoke("editor:export", bundle as EditorExportBundle) as Promise<EditorExportResult>,
   minimizeControl: () => ipcRenderer.send("control:minimize"),

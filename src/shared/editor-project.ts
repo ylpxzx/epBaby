@@ -46,6 +46,11 @@ export interface EditorAction {
   frames: EditorFrame[];
 }
 
+export interface EditorProjectCover {
+  actionId: string;
+  frameId: string;
+}
+
 export interface EditorProject {
   version: typeof EDITOR_PROJECT_VERSION;
   id: string;
@@ -56,6 +61,7 @@ export interface EditorProject {
   palette: string[];
   layers: EditorLayer[];
   actions: EditorAction[];
+  cover: EditorProjectCover;
 }
 
 export interface EditorProjectSummary {
@@ -156,6 +162,13 @@ export function createEditorProject(
     locked: false,
     opacity: 1
   };
+  const firstFrame = createEditorFrame(safeCanvas, [baseLayer]);
+  const firstAction: EditorAction = {
+    id: createEditorId("action"),
+    name: "待机",
+    loop: true,
+    frames: [firstFrame]
+  };
   return {
     version: EDITOR_PROJECT_VERSION,
     id: createEditorId("pet"),
@@ -165,14 +178,8 @@ export function createEditorProject(
     canvas: safeCanvas,
     palette: [...DEFAULT_PALETTE],
     layers: [baseLayer],
-    actions: [
-      {
-        id: createEditorId("action"),
-        name: "待机",
-        loop: true,
-        frames: [createEditorFrame(safeCanvas, [baseLayer])]
-      }
-    ]
+    actions: [firstAction],
+    cover: { actionId: firstAction.id, frameId: firstFrame.id }
   };
 }
 
@@ -313,6 +320,13 @@ export function normalizeEditorProject(value: unknown): EditorProject {
       };
     });
   }
+
+  const requestedCover = source.cover;
+  const coverAction = project.actions.find((action) => action.id === requestedCover?.actionId)
+    ?? project.actions[0]!;
+  const coverFrame = coverAction.frames.find((frame) => frame.id === requestedCover?.frameId)
+    ?? coverAction.frames[0]!;
+  project.cover = { actionId: coverAction.id, frameId: coverFrame.id };
 
   return project;
 }
