@@ -49,13 +49,25 @@ export class EditorProjectStore {
     return project;
   }
 
-  async replaceProjectFileOnce(sourceFile: string, migrationId: string): Promise<EditorProject> {
+  async replaceProjectFileOnce(
+    sourceFile: string,
+    migrationId: string,
+    expectedProjectId?: string
+  ): Promise<EditorProject | undefined> {
     await fs.mkdir(this.directory, { recursive: true });
     const safeMigrationId = migrationId.replace(/[^a-zA-Z0-9_-]/g, "");
     if (!safeMigrationId) throw new Error("Invalid project replacement migration id");
     const marker = path.join(this.directory, `.${safeMigrationId}`);
     try {
       await fs.access(marker);
+      if (expectedProjectId) {
+        try {
+          await fs.access(this.projectPath(expectedProjectId));
+          return undefined;
+        } catch {
+          // Re-seed a bundled project if its local file was removed.
+        }
+      }
       return this.seedProjectFile(sourceFile);
     } catch {
       const value = JSON.parse((await fs.readFile(sourceFile, "utf8")).replace(/^\uFEFF/, ""));
@@ -82,6 +94,12 @@ export class EditorProjectStore {
   }
 
   async list(): Promise<EditorProjectSummary[]> {
+    return (await this.loadAll())
+      .map(projectSummary)
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  }
+
+  async loadAll(): Promise<EditorProject[]> {
     await fs.mkdir(this.directory, { recursive: true });
     const entries = await fs.readdir(this.directory, { withFileTypes: true });
     const projects = await Promise.all(
@@ -92,15 +110,13 @@ export class EditorProjectStore {
             const value = JSON.parse(
               (await fs.readFile(path.join(this.directory, entry.name), "utf8")).replace(/^\uFEFF/, "")
             );
-            return projectSummary(normalizeEditorProject(value));
+            return normalizeEditorProject(value);
           } catch {
             return undefined;
           }
         })
     );
-    return projects
-      .filter((project): project is EditorProjectSummary => Boolean(project))
-      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    return projects.filter((project): project is EditorProject => Boolean(project));
   }
 
   async load(projectId: string): Promise<EditorProject | undefined> {

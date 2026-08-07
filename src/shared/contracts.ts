@@ -2,6 +2,7 @@ import type { Direction } from "./pets";
 import type {
   EditorExportBundle,
   EditorExportResult,
+  EditorLayer,
   EditorProject,
   EditorProjectSummary
 } from "./editor-project";
@@ -25,6 +26,27 @@ export interface RuntimeState extends StoredSettings {
   direction: Direction;
 }
 
+export interface RuntimePetProject {
+  id: string;
+  name: string;
+  canvas: { width: number; height: number };
+  palette: string[];
+  layers: EditorLayer[];
+  actions: Array<{
+    id: string;
+    name: string;
+    loop: boolean;
+    frames: Array<{
+      id: string;
+      durationMs: number;
+      cels: Record<
+        string,
+        { pixels: Uint8Array; offsetX: number; offsetY: number }
+      >;
+    }>;
+  }>;
+}
+
 export interface DesktopPetApi {
   getState(): Promise<RuntimeState>;
   selectPet(petId: string): Promise<RuntimeState>;
@@ -38,6 +60,7 @@ export interface DesktopPetApi {
   showControl(): void;
   showEditor(projectId?: string): void;
   listEditorProjects(): Promise<EditorProjectSummary[]>;
+  loadPetProject(projectId: string): Promise<RuntimePetProject | undefined>;
   loadEditorProject(projectId: string): Promise<EditorProject | undefined>;
   saveEditorProject(project: EditorProject): Promise<EditorProject>;
   exportEditorProject(bundle: EditorExportBundle): Promise<EditorExportResult>;

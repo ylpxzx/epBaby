@@ -1,5 +1,5 @@
 export const EDITOR_PROJECT_VERSION = 1;
-export const MAX_EDITOR_CANVAS_SIZE = 128;
+export const MAX_EDITOR_CANVAS_SIZE = 192;
 
 export interface EditorCanvasSize {
   width: number;

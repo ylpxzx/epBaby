@@ -1,5 +1,4 @@
-import type { RuntimeState } from "../shared/contracts";
-import type { EditorProject } from "../shared/editor-project";
+import type { RuntimePetProject, RuntimeState } from "../shared/contracts";
 import { drawProjectFrame, findProjectAction, frameAtElapsed } from "./lib/project-renderer";
 import "./styles/pet.css";
 
@@ -20,10 +19,13 @@ const speech = required<HTMLDivElement>("#speech");
 const context = getContext2d(canvas);
 
 let state: RuntimeState | undefined;
-let project: EditorProject | undefined;
+let project: RuntimePetProject | undefined;
 let projectToken = 0;
+let projectRenderVersion = 0;
+let loadingProjectId = "";
 let actionStartedAt = performance.now();
 let lastActionKey = "";
+let lastRenderKey = "";
 let clickThrough = true;
 let dragging = false;
 let dragDistance = 0;
@@ -50,12 +52,19 @@ function isOpaqueAt(x: number, y: number): boolean {
 
 async function updateProject(projectId: string): Promise<void> {
   const token = ++projectToken;
+  loadingProjectId = projectId;
   project = undefined;
+  lastRenderKey = "";
+  context.clearRect(0, 0, canvas.width, canvas.height);
   if (!projectId) return;
   try {
-    const loaded = await window.desktopPet.loadEditorProject(projectId);
-    if (token === projectToken) project = loaded;
+    const loaded = await window.desktopPet.loadPetProject(projectId);
+    if (token === projectToken) {
+      project = loaded;
+      projectRenderVersion += 1;
+    }
   } catch (error) {
+    if (token === projectToken) loadingProjectId = "";
     console.error(error);
     showSpeech("宠物工程加载失败");
   }
@@ -69,7 +78,10 @@ function applyState(nextState: RuntimeState): void {
     actionStartedAt = performance.now();
     lastActionKey = nextKey;
   }
-  if (previousPetId !== nextState.selectedPetId || !project) {
+  if (
+    previousPetId !== nextState.selectedPetId ||
+    (!project && loadingProjectId !== nextState.selectedPetId)
+  ) {
     void updateProject(nextState.selectedPetId);
   }
 }
@@ -79,13 +91,19 @@ function render(now: number): void {
     const action = findProjectAction(project, state.currentActionId);
     const elapsed = state.paused ? 0 : now - actionStartedAt;
     const frame = frameAtElapsed(action, elapsed, state.speed);
-    drawProjectFrame(context, project, frame, {
-      maxSize: Math.round(Math.min(244, 204 * state.scale)),
-      bottomPadding: 4,
-      flip: state.direction === -1
-    });
-  } else {
+    const maxSize = Math.round(Math.min(244, 204 * state.scale));
+    const renderKey = `${projectRenderVersion}:${frame?.id ?? ""}:${maxSize}:${state.direction}`;
+    if (renderKey !== lastRenderKey) {
+      drawProjectFrame(context, project, frame, {
+        maxSize,
+        bottomPadding: 4,
+        flip: state.direction === -1
+      });
+      lastRenderKey = renderKey;
+    }
+  } else if (lastRenderKey) {
     context.clearRect(0, 0, canvas.width, canvas.height);
+    lastRenderKey = "";
   }
   requestAnimationFrame(render);
 }

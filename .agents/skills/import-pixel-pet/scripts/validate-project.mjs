@@ -16,8 +16,8 @@ const actionReport = {};
 
 if (project.version !== 1) errors.push("version must be 1");
 if (!project.id || !/^[a-zA-Z0-9_-]+$/.test(project.id)) errors.push("project id is invalid");
-if (!Number.isInteger(project.canvas?.width) || project.canvas.width < 1 || project.canvas.width > 128) errors.push("canvas width must be an integer from 1 to 128");
-if (!Number.isInteger(project.canvas?.height) || project.canvas.height < 1 || project.canvas.height > 128) errors.push("canvas height must be an integer from 1 to 128");
+if (!Number.isInteger(project.canvas?.width) || project.canvas.width < 1 || project.canvas.width > 192) errors.push("canvas width must be an integer from 1 to 192");
+if (!Number.isInteger(project.canvas?.height) || project.canvas.height < 1 || project.canvas.height > 192) errors.push("canvas height must be an integer from 1 to 192");
 if (!Array.isArray(project.palette) || project.palette.length < 2 || project.palette.length > 256) errors.push("palette must contain 2 to 256 colors");
 else if (project.palette[0] !== "#00000000") errors.push("palette index 0 must be #00000000");
 if (!Array.isArray(project.layers) || !project.layers.length) errors.push("project has no layers");

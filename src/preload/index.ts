@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { DesktopPetApi, RuntimeState } from "../shared/contracts";
+import type { DesktopPetApi, RuntimePetProject, RuntimeState } from "../shared/contracts";
 import type {
   EditorExportBundle,
   EditorExportResult,
@@ -20,6 +20,8 @@ const api: DesktopPetApi = {
   showControl: () => ipcRenderer.send("pet:show-control"),
   showEditor: (projectId) => ipcRenderer.send("editor:show", projectId),
   listEditorProjects: () => ipcRenderer.invoke("editor:list") as Promise<EditorProjectSummary[]>,
+  loadPetProject: (projectId) =>
+    ipcRenderer.invoke("pet:load-project", projectId) as Promise<RuntimePetProject | undefined>,
   loadEditorProject: (projectId) =>
     ipcRenderer.invoke("editor:load", projectId) as Promise<EditorProject | undefined>,
   saveEditorProject: (project) =>

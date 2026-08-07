@@ -14,8 +14,8 @@ import {
   type IpcMainInvokeEvent,
   type Rectangle
 } from "electron";
-import type { RuntimeState, StoredSettings } from "../shared/contracts";
-import type { EditorExportBundle, EditorProject } from "../shared/editor-project";
+import type { RuntimePetProject, RuntimeState, StoredSettings } from "../shared/contracts";
+import { projectSummary, type EditorExportBundle, type EditorProject } from "../shared/editor-project";
 import { isLocomotionAction, type Direction } from "../shared/pets";
 import { EditorProjectStore } from "./editor-project-store";
 import { StateStore } from "./state-store";
@@ -75,6 +75,7 @@ let tray: Tray | null = null;
 let store: StateStore;
 let editorStore: EditorProjectStore;
 const runtimeProjects = new Map<string, EditorProject>();
+const runtimePetProjects = new Map<string, RuntimePetProject>();
 let settings: StoredSettings;
 let currentActionId = "";
 let direction: Direction = 1;
@@ -103,11 +104,50 @@ function actionDuration(project: EditorProject | undefined, actionId: string): n
 
 async function refreshRuntimeProjects(): Promise<void> {
   runtimeProjects.clear();
-  const summaries = await editorStore.list();
-  const projects = await Promise.all(summaries.map((summary) => editorStore.load(summary.id)));
+  runtimePetProjects.clear();
+  const projects = await editorStore.loadAll();
   for (const project of projects) {
     if (project) runtimeProjects.set(project.id, project);
   }
+}
+
+function compactPetProject(project: EditorProject): RuntimePetProject {
+  return {
+    id: project.id,
+    name: project.name,
+    canvas: { ...project.canvas },
+    palette: [...project.palette],
+    layers: project.layers.map((layer) => ({ ...layer })),
+    actions: project.actions.map((action) => ({
+      id: action.id,
+      name: action.name,
+      loop: action.loop,
+      frames: action.frames.map((frame) => ({
+        id: frame.id,
+        durationMs: frame.durationMs,
+        cels: Object.fromEntries(
+          Object.entries(frame.cels).map(([layerId, cel]) => [
+            layerId,
+            {
+              pixels: Uint8Array.from(cel.pixels),
+              offsetX: cel.offsetX,
+              offsetY: cel.offsetY
+            }
+          ])
+        )
+      }))
+    }))
+  };
+}
+
+function runtimePetProject(projectId: string): RuntimePetProject | undefined {
+  const cached = runtimePetProjects.get(projectId);
+  if (cached) return cached;
+  const project = runtimeProjects.get(projectId);
+  if (!project) return undefined;
+  const compact = compactPetProject(project);
+  runtimePetProjects.set(projectId, compact);
+  return compact;
 }
 
 function persist(): void {
@@ -185,7 +225,17 @@ function recallPet(): RuntimeState {
 }
 
 function showControl(): void {
-  if (!controlWindow || controlWindow.isDestroyed()) return;
+  if (!controlWindow || controlWindow.isDestroyed()) {
+    controlWindow = createControlWindow();
+    const window = controlWindow;
+    window.webContents.once("did-finish-load", () => {
+      if (!window.isDestroyed()) {
+        window.show();
+        window.focus();
+      }
+    });
+    return;
+  }
   controlWindow.show();
   controlWindow.focus();
 }
@@ -569,15 +619,24 @@ function registerIpc(): void {
   ipcMain.on("editor:show", (event, projectId: unknown) => {
     if (isTrusted(event)) showEditor(typeof projectId === "string" ? projectId : undefined);
   });
-  ipcMain.handle("editor:list", (event) => (isTrusted(event) ? editorStore.list() : []));
+  ipcMain.handle("pet:load-project", (event, projectId: unknown) => {
+    if (event.sender !== petWindow?.webContents || typeof projectId !== "string") return undefined;
+    return runtimePetProject(projectId);
+  });
+  ipcMain.handle("editor:list", (event) =>
+    isTrusted(event)
+      ? [...runtimeProjects.values()].map(projectSummary).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+      : []
+  );
   ipcMain.handle("editor:load", (event, projectId: unknown) => {
     if (!isTrusted(event) || typeof projectId !== "string") return undefined;
-    return editorStore.load(projectId);
+    return runtimeProjects.get(projectId);
   });
   ipcMain.handle("editor:save", async (event, project: unknown) => {
     if (!isTrusted(event)) throw new Error("Untrusted editor save request");
     const saved = await editorStore.save(project as EditorProject);
     runtimeProjects.set(saved.id, saved);
+    runtimePetProjects.delete(saved.id);
     if (!activeProject()) settings.selectedPetId = saved.id;
     if (settings.selectedPetId === saved.id) {
       currentActionId = activeAction(saved)?.id ?? "";
@@ -641,11 +700,18 @@ if (!hasLock) {
     await editorStore.removeProjectOnce("cyber-cat", "remove-cyber-cat-v1");
     await editorStore.replaceProjectFileOnce(
       defaultPetProjectFile("lime-slime.json"),
-      "default-lime-slime-v1"
+      "default-lime-slime-v1",
+      "lime-slime"
     );
     await editorStore.replaceProjectFileOnce(
       defaultPetProjectFile("moss-jester-cat.json"),
-      "default-moss-jester-cat-v10"
+      "default-moss-jester-cat-v10",
+      "moss-jester-cat"
+    );
+    await editorStore.replaceProjectFileOnce(
+      defaultPetProjectFile("zoro-santoryu.json"),
+      "default-zoro-santoryu-v2",
+      "zoro-santoryu"
     );
     await refreshRuntimeProjects();
     settings = store.load();
@@ -656,7 +722,6 @@ if (!hasLock) {
     store.saveNow(settings);
     registerIpc();
     petWindow = createPetWindow();
-    controlWindow = createControlWindow();
     createTray();
     startMovementLoop();
     scheduleBehavior(1200);

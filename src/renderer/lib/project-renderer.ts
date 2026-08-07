@@ -1,4 +1,22 @@
-import type { EditorAction, EditorFrame, EditorProject } from "../../shared/editor-project";
+interface DrawableFrame {
+  id: string;
+  durationMs: number;
+  cels: Record<string, { pixels: ArrayLike<number>; offsetX: number; offsetY: number }>;
+}
+
+interface DrawableAction {
+  id: string;
+  name: string;
+  loop: boolean;
+  frames: DrawableFrame[];
+}
+
+interface DrawableProject {
+  canvas: { width: number; height: number };
+  palette: string[];
+  layers: Array<{ id: string; visible: boolean; opacity: number }>;
+  actions: DrawableAction[];
+}
 
 export interface DrawProjectOptions {
   maxSize: number;
@@ -6,15 +24,15 @@ export interface DrawProjectOptions {
   flip?: boolean;
 }
 
-export function findProjectAction(project: EditorProject, actionId: string): EditorAction {
+export function findProjectAction(project: DrawableProject, actionId: string): DrawableAction {
   return project.actions.find((action) => action.id === actionId) ?? project.actions[0]!;
 }
 
 export function frameAtElapsed(
-  action: EditorAction,
+  action: DrawableAction,
   elapsedMs: number,
   speed = 1
-): EditorFrame | undefined {
+): DrawableFrame | undefined {
   if (!action.frames.length) return undefined;
   const duration = action.frames.reduce((total, frame) => total + frame.durationMs, 0);
   if (duration <= 0) return action.frames[0];
@@ -30,8 +48,8 @@ export function frameAtElapsed(
 
 export function drawProjectFrame(
   context: CanvasRenderingContext2D,
-  project: EditorProject,
-  frame: EditorFrame | undefined,
+  project: DrawableProject,
+  frame: DrawableFrame | undefined,
   options: DrawProjectOptions
 ): void {
   const canvasWidth = context.canvas.width;
@@ -85,7 +103,7 @@ export function drawProjectFrame(
 
 export function drawProjectThumbnail(
   context: CanvasRenderingContext2D,
-  project: EditorProject
+  project: DrawableProject
 ): void {
   const action = project.actions[0];
   drawProjectFrame(context, project, action?.frames[0], {

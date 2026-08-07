@@ -2,7 +2,7 @@
 
 ## Required file map
 
-- `src/shared/editor-project.ts`: project schema, normalization, 1–128 canvas limit.
+- `src/shared/editor-project.ts`: project schema, normalization, 1–192 canvas limit.
 - `src/main/editor-project-store.ts`: project save/load, seeding, one-time replacements.
 - `src/main/index.ts`: startup migrations, runtime project map, locomotion behavior.
 - `src/shared/pets.ts`: locomotion action detection.
@@ -14,7 +14,7 @@
 ## EditorProject invariants
 
 - `version` is `1`.
-- `canvas.width` and `canvas.height` are integers from 1 through 128.
+- `canvas.width` and `canvas.height` are integers from 1 through 192.
 - `palette[0]` is exactly `#00000000`; palette length is at most 256.
 - Every layer has a stable unique ID.
 - Every action has at least one frame.

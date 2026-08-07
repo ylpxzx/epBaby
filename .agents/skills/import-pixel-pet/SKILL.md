@@ -1,11 +1,13 @@
 ---
 name: import-pixel-pet
-description: Project-scoped workflow for importing reference images into epBaby as editable pixel pets. Use inside the epBaby repository when adding a new character from a concept image, multi-pose sheet, sprite reference, or role folder; when converting poses into frame actions; or when wiring a generated pet into the Electron default library. Do not use outside this repository.
+description: Legacy epBaby-only import helper for converting already-approved sprite sheets, indexed frames, bead charts, or existing generators into editable EditorProject files and wiring them into the default library. Use for compatibility imports and deterministic revisions, not for the full reference-to-actions-to-charts-to-pet creation flow; use create-epbaby-pixel-pet for new end-to-end pets. Do not use outside this repository.
 ---
 
 # Import Pixel Pet
 
 Convert reference artwork into a deterministic, editable `EditorProject` while preserving the supplied character instead of loosely redrawing it.
+
+For a new pet that still needs action design, frame-count review, bead-chart generation, compact layout, and chart-exact reconstruction, use `create-epbaby-pixel-pet` instead.
 
 ## Guard the scope
 

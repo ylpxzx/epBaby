@@ -8,7 +8,7 @@
   "scripts": {
     "electron:install": "cross-env ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/ install-electron --no",
     "sprites:slice": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/slice-sprites.ps1",
-    "pet:generate-default": "node scripts/generate-default-slime.mjs && node scripts/generate-role-cat.mjs",
+    "pet:generate-default": "node scripts/generate-default-slime.mjs && node scripts/generate-role-cat.mjs && node scripts/generate-zoro-santoryu.mjs",
     "build:main": "tsup",
     "typecheck": "tsc --noEmit",
     "build": "npm run typecheck && npm run build:main && vite build",
