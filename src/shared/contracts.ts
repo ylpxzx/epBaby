@@ -26,6 +26,19 @@ export interface RuntimeState extends StoredSettings {
   direction: Direction;
 }
 
+export type PetInteractionKind =
+  | "click"
+  | "double-click"
+  | "triple-click"
+  | "long-press"
+  | "drag-release"
+  | "wheel-up"
+  | "wheel-down"
+  | "typing-burst"
+  | "hotkey-1"
+  | "hotkey-2"
+  | "hotkey-3";
+
 export interface RuntimePetProject {
   id: string;
   name: string;
@@ -55,7 +68,7 @@ export interface DesktopPetApi {
   setPaused(paused: boolean): Promise<RuntimeState>;
   setSpeed(speed: number): Promise<RuntimeState>;
   setScale(scale: number): Promise<RuntimeState>;
-  interact(): Promise<RuntimeState>;
+  interact(kind?: PetInteractionKind): Promise<RuntimeState>;
   recall(): Promise<RuntimeState>;
   showControl(): void;
   showEditor(projectId?: string): void;

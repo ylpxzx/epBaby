@@ -4,6 +4,7 @@ import {
   app,
   BrowserWindow,
   dialog,
+  globalShortcut,
   ipcMain,
   Menu,
   nativeImage,
@@ -14,7 +15,7 @@ import {
   type IpcMainInvokeEvent,
   type Rectangle
 } from "electron";
-import type { RuntimePetProject, RuntimeState, StoredSettings } from "../shared/contracts";
+import type { PetInteractionKind, RuntimePetProject, RuntimeState, StoredSettings } from "../shared/contracts";
 import { projectSummary, type EditorExportBundle, type EditorProject } from "../shared/editor-project";
 import { isLocomotionAction, type Direction } from "../shared/pets";
 import { EditorProjectStore } from "./editor-project-store";
@@ -180,7 +181,17 @@ function electronCoordinate(value: number, fallback = 0): number {
   return Object.is(rounded, -0) ? 0 : rounded;
 }
 
-function clampToWorkArea(x: number, y: number): { x: number; y: number; workArea: Rectangle } {
+function visibleAreaOnDisplay(x: number, y: number, workArea: Rectangle): number {
+  const overlapWidth = Math.max(0, Math.min(x + PET_WINDOW_SIZE.width, workArea.x + workArea.width) - Math.max(x, workArea.x));
+  const overlapHeight = Math.max(0, Math.min(y + PET_WINDOW_SIZE.height, workArea.y + workArea.height) - Math.max(y, workArea.y));
+  return overlapWidth * overlapHeight;
+}
+
+function clampToWorkArea(
+  x: number,
+  y: number,
+  allowDisplayTransition = false
+): { x: number; y: number; workArea: Rectangle } {
   const safeX = Number.isFinite(x) ? x : 0;
   const safeY = Number.isFinite(y) ? y : 0;
   const center = {
@@ -188,6 +199,19 @@ function clampToWorkArea(x: number, y: number): { x: number; y: number; workArea
     y: electronCoordinate(safeY + PET_WINDOW_SIZE.height / 2)
   };
   const workArea = screen.getDisplayNearestPoint(center).workArea;
+  const visibleArea = allowDisplayTransition
+    ? screen.getAllDisplays().reduce(
+        (total, display) => total + visibleAreaOnDisplay(safeX, safeY, display.workArea),
+        0
+      )
+    : 0;
+  if (allowDisplayTransition && visibleArea >= PET_WINDOW_SIZE.width * PET_WINDOW_SIZE.height * 0.2) {
+    return {
+      x: electronCoordinate(safeX),
+      y: electronCoordinate(safeY),
+      workArea
+    };
+  }
   return {
     x: electronCoordinate(clamp(safeX, workArea.x, workArea.x + workArea.width - PET_WINDOW_SIZE.width), workArea.x),
     y: electronCoordinate(clamp(safeY, workArea.y, workArea.y + workArea.height - PET_WINDOW_SIZE.height), workArea.y),
@@ -208,13 +232,35 @@ function setPetWindowPosition(x: number, y: number): boolean {
   }
 }
 
-function movePetTo(x: number, y: number): void {
+function movePetTo(x: number, y: number, allowDisplayTransition = false): void {
   if (!petWindow || petWindow.isDestroyed()) return;
-  const next = clampToWorkArea(x, y);
+  const next = clampToWorkArea(x, y, allowDisplayTransition);
   if (setPetWindowPosition(next.x, next.y)) {
     settings.position = { x: next.x, y: next.y };
     persist();
   }
+}
+
+function clampWalkingPosition(x: number, y: number, walkingDirection: Direction, currentX: number) {
+  // Pick the display under the pet's leading edge. Using the window center
+  // traps the pet on the current display because clamping happens before the
+  // center can cross the boundary.
+  const leadingPoint = {
+    x: electronCoordinate(walkingDirection === 1 ? x + PET_WINDOW_SIZE.width : x),
+    y: electronCoordinate(y + PET_WINDOW_SIZE.height / 2)
+  };
+  const targetDisplay = screen.getDisplayNearestPoint(leadingPoint);
+  const currentDisplay = screen.getDisplayNearestPoint({
+    x: electronCoordinate(currentX + PET_WINDOW_SIZE.width / 2),
+    y: electronCoordinate(y + PET_WINDOW_SIZE.height / 2)
+  });
+  const workArea = targetDisplay.workArea;
+  return {
+    x: electronCoordinate(clamp(x, workArea.x, workArea.x + workArea.width - PET_WINDOW_SIZE.width), workArea.x),
+    y: electronCoordinate(clamp(y, workArea.y, workArea.y + workArea.height - PET_WINDOW_SIZE.height), workArea.y),
+    workArea,
+    crossedDisplay: targetDisplay.id !== currentDisplay.id
+  };
 }
 
 function recallPet(): RuntimeState {
@@ -488,6 +534,62 @@ function selectAction(actionId: string, disableAuto = false): RuntimeState {
   return snapshot();
 }
 
+const INTERACTION_KEYWORDS: Partial<Record<PetInteractionKind, string[]>> = {
+  click: ["react", "happy", "smile", "互动", "开心", "回应"],
+  "double-click": ["show", "pose", "card", "表演", "展示", "亮相"],
+  "triple-click": ["attack", "rush", "slash", "斩", "攻击", "突进"],
+  "long-press": ["sleep", "rest", "idle", "睡", "休息", "待机"],
+  "drag-release": ["jump", "land", "落地", "跳"],
+  "wheel-up": ["aerial", "fly", "jump", "空中", "飞", "跳"],
+  "wheel-down": ["crouch", "sit", "sleep", "蹲", "坐", "休息"],
+  "typing-burst": ["dance", "cheer", "show", "card", "舞", "欢呼", "表演"]
+};
+
+function interactionAction(project: EditorProject, kind: PetInteractionKind) {
+  const hotkeyIndex = kind === "hotkey-1" ? 1 : kind === "hotkey-2" ? 2 : kind === "hotkey-3" ? 3 : -1;
+  if (hotkeyIndex >= 0) return project.actions[hotkeyIndex] ?? project.actions[0];
+  const keywords = INTERACTION_KEYWORDS[kind] ?? [];
+  const matched = project.actions.find((action) => {
+    const searchable = `${action.id} ${action.name}`.toLowerCase();
+    return keywords.some((keyword) => searchable.includes(keyword.toLowerCase()));
+  });
+  if (matched) return matched;
+  const reactions = project.actions.filter(
+    (action) => !isLocomotionAction(action.id, action.name) && action.id !== project.actions[0]?.id
+  );
+  const fallbackIndex = Math.abs([...kind].reduce((total, character) => total + character.charCodeAt(0), 0));
+  return reactions[fallbackIndex % Math.max(1, reactions.length)] ?? project.actions[0];
+}
+
+function triggerInteraction(kind: PetInteractionKind): RuntimeState {
+  const project = activeProject();
+  if (!project?.actions.length) return snapshot();
+  const action = interactionAction(project, kind) ?? project.actions[0]!;
+  currentActionId = action.id;
+  broadcast();
+  scheduleBehavior(actionDuration(project, action.id) / settings.speed);
+  return snapshot();
+}
+
+function registerGlobalShortcuts(): void {
+  const shortcuts: Array<[string, () => void]> = [
+    ["CommandOrControl+Alt+1", () => void triggerInteraction("hotkey-1")],
+    ["CommandOrControl+Alt+2", () => void triggerInteraction("hotkey-2")],
+    ["CommandOrControl+Alt+3", () => void triggerInteraction("hotkey-3")],
+    ["CommandOrControl+Alt+R", () => void recallPet()],
+    ["CommandOrControl+Alt+P", () => {
+      settings.paused = !settings.paused;
+      persist();
+      broadcast();
+    }]
+  ];
+  for (const [accelerator, handler] of shortcuts) {
+    if (!globalShortcut.register(accelerator, handler)) {
+      console.warn(`Unable to register global shortcut: ${accelerator}`);
+    }
+  }
+}
+
 function chooseNextAction(): void {
   if (!settings.autoMode || settings.paused) {
     scheduleBehavior(1200);
@@ -529,10 +631,8 @@ function startMovementLoop(): void {
     const y = position[1] ?? 0;
     const speed = 56 * settings.speed;
     let nextX = x + speed * elapsedSeconds * direction;
-    const clamped = clampToWorkArea(nextX, y);
-    const minimumX = clamped.workArea.x;
-    const maximumX = clamped.workArea.x + clamped.workArea.width - PET_WINDOW_SIZE.width;
-    const hitEdge = nextX < minimumX || nextX > maximumX;
+    const clamped = clampWalkingPosition(nextX, y, direction, x);
+    const hitEdge = !clamped.crossedDisplay && clamped.x !== electronCoordinate(nextX);
     if (hitEdge) {
       direction = direction === 1 ? -1 : 1;
       broadcast();
@@ -597,18 +697,13 @@ function registerIpc(): void {
     return snapshot();
   });
 
-  ipcMain.handle("pet:interact", (event) => {
+  ipcMain.handle("pet:interact", (event, requestedKind: unknown) => {
     if (!isTrusted(event)) return snapshot();
-    const project = activeProject();
-    if (!project?.actions.length) return snapshot();
-    const reactions = project.actions.filter(
-      (action) => !isLocomotionAction(action.id, action.name) && action.id !== project.actions[0]!.id
-    );
-    const reaction = reactions[Math.floor(Math.random() * reactions.length)] ?? project.actions[0]!;
-    currentActionId = reaction.id;
-    broadcast();
-    scheduleBehavior(actionDuration(project, reaction.id) / settings.speed);
-    return snapshot();
+    const allowed: PetInteractionKind[] = ["click", "double-click", "triple-click", "long-press", "drag-release", "wheel-up", "wheel-down", "typing-burst", "hotkey-1", "hotkey-2", "hotkey-3"];
+    const kind = allowed.includes(requestedKind as PetInteractionKind)
+      ? requestedKind as PetInteractionKind
+      : "click";
+    return triggerInteraction(kind);
   });
 
   ipcMain.handle("pet:recall", (event) => (isTrusted(event) ? recallPet() : snapshot()));
@@ -721,7 +816,7 @@ function registerIpc(): void {
     const position = petWindow.getPosition();
     const x = position[0] ?? 0;
     const y = position[1] ?? 0;
-    movePetTo(x + dx, y + dy);
+    movePetTo(x + dx, y + dy, true);
   });
 }
 
@@ -765,6 +860,7 @@ if (!hasLock) {
     registerIpc();
     petWindow = createPetWindow();
     createTray();
+    registerGlobalShortcuts();
     startMovementLoop();
     scheduleBehavior(1200);
   });
@@ -775,6 +871,7 @@ app.on("window-all-closed", () => {
 });
 
 app.on("before-quit", () => {
+  globalShortcut.unregisterAll();
   quitting = true;
   if (behaviorTimer) clearTimeout(behaviorTimer);
   if (movementTimer) clearInterval(movementTimer);

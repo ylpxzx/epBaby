@@ -104,14 +104,67 @@ export function drawProjectFrame(
 
 export function drawProjectThumbnail(
   context: CanvasRenderingContext2D,
-  project: DrawableProject
+  project: DrawableProject,
+  selectedFrame?: DrawableFrame
 ): void {
   const action = project.actions.find((candidate) => candidate.id === project.cover?.actionId)
     ?? project.actions[0];
-  const frame = action?.frames.find((candidate) => candidate.id === project.cover?.frameId)
+  const frame = selectedFrame
+    ?? action?.frames.find((candidate) => candidate.id === project.cover?.frameId)
     ?? action?.frames[0];
-  drawProjectFrame(context, project, frame, {
-    maxSize: Math.min(context.canvas.width, context.canvas.height) - 8,
-    bottomPadding: Math.max(4, Math.round((context.canvas.height - Math.min(context.canvas.width, context.canvas.height)) / 2))
-  });
+  const canvasWidth = context.canvas.width;
+  const canvasHeight = context.canvas.height;
+  context.clearRect(0, 0, canvasWidth, canvasHeight);
+  if (!frame) return;
+
+  // Cover frames may use negative cel offsets or extend beyond the logical
+  // project canvas (weapons and effects commonly do). The normal renderer
+  // intentionally clips those pixels, but a library thumbnail should fit the
+  // complete visible silhouette instead.
+  const visiblePixels: Array<{ x: number; y: number; color: string; opacity: number }> = [];
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+
+  for (const layer of project.layers) {
+    if (!layer.visible) continue;
+    const cel = frame.cels[layer.id];
+    if (!cel) continue;
+    for (let index = 0; index < cel.pixels.length; index += 1) {
+      const paletteIndex = cel.pixels[index] ?? 0;
+      if (!paletteIndex) continue;
+      const color = project.palette[paletteIndex];
+      if (!color || color === "#00000000") continue;
+      const x = (index % project.canvas.width) + cel.offsetX;
+      const y = Math.floor(index / project.canvas.width) + cel.offsetY;
+      visiblePixels.push({ x, y, color, opacity: layer.opacity });
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+    }
+  }
+
+  if (!visiblePixels.length) return;
+  const padding = 10;
+  const contentWidth = maxX - minX + 1;
+  const contentHeight = maxY - minY + 1;
+  const pixelSize = Math.max(
+    1,
+    Math.floor(Math.min((canvasWidth - padding * 2) / contentWidth, (canvasHeight - padding * 2) / contentHeight))
+  );
+  const drawWidth = contentWidth * pixelSize;
+  const drawHeight = contentHeight * pixelSize;
+  const originX = Math.floor((canvasWidth - drawWidth) / 2) - minX * pixelSize;
+  const originY = Math.floor((canvasHeight - drawHeight) / 2) - minY * pixelSize;
+
+  context.save();
+  context.imageSmoothingEnabled = false;
+  for (const pixel of visiblePixels) {
+    context.globalAlpha = pixel.opacity;
+    context.fillStyle = pixel.color;
+    context.fillRect(originX + pixel.x * pixelSize, originY + pixel.y * pixelSize, pixelSize, pixelSize);
+  }
+  context.restore();
 }

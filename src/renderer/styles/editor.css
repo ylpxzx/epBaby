@@ -24,6 +24,7 @@
 
 html,
 body,
+#app,
 .editor-app {
   width: 100%;
   height: 100%;

@@ -39,7 +39,8 @@
 }
 
 html,
-body {
+body,
+#app {
   width: 100%;
   height: 100%;
   margin: 0;
@@ -581,11 +582,13 @@ output {
 
 .pet-list {
   min-width: 0;
+  min-height: 0;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 220px));
   justify-content: start;
   gap: clamp(10px, 1.2vw, 20px);
   padding: 23px 28px 25px 31px;
+  overflow: hidden;
 }
 
 .control-card button:disabled,
@@ -615,6 +618,7 @@ output {
 .pet-card {
   position: relative;
   min-width: 0;
+  min-height: 0;
   height: 100%;
   overflow: hidden;
   border: 1px solid transparent;
@@ -624,12 +628,16 @@ output {
 }
 
 .pet-card-select {
+  min-width: 0;
+  min-height: 0;
   width: 100%;
   height: 100%;
   display: grid;
-  grid-template-rows: minmax(0, 1fr) 28px;
+  grid-template-rows: minmax(0, 1fr) 24px;
   align-items: center;
-  padding: 9px 10px 5px;
+  gap: 4px;
+  padding: 9px 10px 8px;
+  overflow: hidden;
   border: 0;
   color: var(--text);
   background: transparent;
@@ -649,6 +657,7 @@ output {
 
 .pet-card-tools {
   position: absolute;
+  z-index: 2;
   top: 8px;
   right: 8px;
   display: flex;
@@ -702,24 +711,32 @@ output {
 }
 
 .pet-preview {
+  width: 100%;
+  height: 100%;
   min-height: 0;
   display: grid;
   place-items: center;
   overflow: hidden;
+  contain: layout paint;
 }
 
 .pet-preview canvas {
+  display: block;
   width: 100%;
   height: 100%;
-  max-height: 135px;
+  max-width: 100%;
+  max-height: 100%;
   image-rendering: pixelated;
 }
 
 .pet-card strong {
+  width: 100%;
+  min-width: 0;
   align-self: end;
   overflow: hidden;
   font-size: 14px;
   font-weight: 500;
+  line-height: 24px;
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;

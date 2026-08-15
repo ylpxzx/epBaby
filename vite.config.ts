@@ -1,12 +1,14 @@
 import path from "node:path";
 import fs from "node:fs";
 import { defineConfig } from "vite";
+import vue from "@vitejs/plugin-vue";
 
 export default defineConfig({
   root: path.resolve(import.meta.dirname, "src/renderer"),
   publicDir: false,
   base: "./",
   plugins: [
+    vue(),
     {
       name: "copy-default-pets",
       closeBundle() {

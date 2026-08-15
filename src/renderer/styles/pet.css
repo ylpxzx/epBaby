@@ -9,7 +9,8 @@
 }
 
 html,
-body {
+body,
+#app {
   width: 100%;
   height: 100%;
   max-width: 100%;
@@ -33,7 +34,7 @@ body {
   position: relative;
 }
 
-#pet-canvas {
+.pet-canvas {
   position: absolute;
   inset: 0;
   display: block;
@@ -42,13 +43,14 @@ body {
   overflow: hidden;
   image-rendering: pixelated;
   cursor: grab;
+  touch-action: none;
 }
 
-#pet-canvas:active {
+.pet-canvas:active {
   cursor: grabbing;
 }
 
-#speech {
+.speech {
   position: absolute;
   z-index: 2;
   top: 8px;
@@ -68,7 +70,7 @@ body {
   transition: opacity 120ms ease, transform 120ms ease;
 }
 
-#speech.visible {
+.speech.visible {
   opacity: 1;
   transform: translate(-50%, 0);
 }
