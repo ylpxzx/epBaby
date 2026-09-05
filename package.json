@@ -20,7 +20,7 @@
     "@vitejs/plugin-vue": "^6.0.8",
     "concurrently": "latest",
     "cross-env": "latest",
-    "electron": "latest",
+    "electron": "42.3.0",
     "tsup": "latest",
     "typescript": "latest",
     "vite": "latest",
